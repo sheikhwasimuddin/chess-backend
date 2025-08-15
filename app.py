@@ -8,18 +8,17 @@ import pandas as pd
 
 # ------------------ artefacts ------------------
 model = joblib.load("model/chess_model.pkl")
-
 eco_enc = joblib.load("model/eco_encoder.pkl")
-name_enc=joblib.load("model/name_encoder.pkl")
+name_enc = joblib.load("model/name_encoder.pkl")
 first_enc = joblib.load("model/first_move_encoder.pkl")
 
 # ------------------ FastAPI --------------------
 app = FastAPI(title="Chess ML Predictor")
 
-# Allow Streamlit dev server
+# Allow Streamlit dev server (adjust if needed for Render)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8501"],
+    allow_origins=["*"],  # allow all for testing; tighten in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,29 +37,11 @@ def safe_transform(encoder, value: Optional[str]) -> int:
     value = value or "unknown"
     if value in encoder.classes_:
         return int(encoder.transform([value])[0])
-    # fallback to first class (usually the most frequent)
     return int(encoder.transform([encoder.classes_[0]])[0])
-
-
-import requests
-
-url = "http://localhost:8000/predict"
-data = {
-    "moves_san": ["e4", "e5", "Nf3", "Nc6"], 
-    "white_rating": 1500,
-    "black_rating": 1400,
-    "opening_eco": "C20",
-    "opening_name": "King's Pawn Game"
-}
-
-response = requests.post(url, json=data)
-print(response.json())
-
 
 # ------------------ endpoint -------------------
 @app.post("/predict")
 def predict(body: PredictIn):
-    moves_str = " ".join(body.moves_san)
     feats = {
         "turns": len(body.moves_san),
         "white_rating": body.white_rating,
